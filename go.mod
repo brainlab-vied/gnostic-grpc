@@ -1,4 +1,4 @@
-module github.com/google/gnostic-grpc
+module github.com/42crunch/gnostic-grpc
 
 go 1.17
 

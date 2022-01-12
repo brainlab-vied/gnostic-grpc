@@ -31,6 +31,7 @@ func NewProtoLanguageModel() *ProtoLanguageModel {
 func (language *ProtoLanguageModel) Prepare(model *surface_v1.Model, inputDocumentType string) {
 	for _, t := range model.Types {
 		// determine the name of protocol buffer messages
+
 		t.TypeName = protoTypeName(strings.Replace(t.Name, "Parameters", "Request", 1))
 
 		for _, f := range t.Fields {
@@ -71,8 +72,12 @@ func findNativeType(fType string, fFormat string) string {
 		}
 	case "integer":
 		switch fFormat {
+		case "uint32":
+			return "uint32"
 		case "int32":
 			return "int32"
+		case "uint64":
+			return "uint64"
 		case "int64":
 			return "int64"
 		default:
@@ -81,7 +86,14 @@ func findNativeType(fType string, fFormat string) string {
 	case "object":
 		return "message"
 	case "string":
-		return "string"
+		switch fFormat {
+		case "string":
+			return "string"
+		case "byte":
+			return "bytes"
+		default:
+			return "string"
+		}
 	case "date":
 		return "string"
 	case "date-time":
@@ -89,7 +101,7 @@ func findNativeType(fType string, fFormat string) string {
 	case "password":
 		return "string"
 	case "binary":
-		return "string"
+		return "bytes"
 	case "email":
 		return "string"
 	case "uuid":
@@ -271,7 +283,7 @@ func protoFieldName(originalName string, t string) string {
 	if len(name) == 0 {
 		name = CleanName(t)
 	}
-	name = toSnakeCase(name)
+	//name = toSnakeCase(name)
 	return name
 }
 
@@ -314,4 +326,10 @@ func toSnakeCase(str string) string {
 	snake := matchFirstCap.ReplaceAllString(str, "${1}_${2}")
 	snake = matchAllCap.ReplaceAllString(snake, "${1}_${2}")
 	return strings.ToLower(snake)
+}
+
+func getRefName(str string) string {
+	arr := strings.Split(str, "/")
+	w := arr[len(arr)-1]
+	return w
 }
