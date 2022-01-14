@@ -99,10 +99,10 @@ func buildAllMessageDescriptors(renderer *Renderer) (messageDescriptors []*dpb.D
 							if ts.TypeName == surfaceField.Type {
 								surfaceField.Name = ts.Fields[0].Name
 								surfaceField.FieldName = ts.Fields[0].Name
-								surfaceField.NativeType = "string"
 								//format = ts.Fields[0].Format
 							}
 						}
+						surfaceField.NativeType = "string"
 					} else {
 						surfaceField.Type = "string"
 						surfaceField.NativeType = "string"
