@@ -97,9 +97,11 @@ func buildAllMessageDescriptors(renderer *Renderer) (messageDescriptors []*dpb.D
 					if surfaceField.Kind == surface_v1.FieldKind_REFERENCE {
 						for _, ts := range renderer.Model.Types {
 							if ts.TypeName == surfaceField.Type {
-								surfaceField.Name = ts.Fields[0].Name
-								surfaceField.FieldName = ts.Fields[0].Name
-								//format = ts.Fields[0].Format
+								if ts.Fields[0].Name != "value" {
+									surfaceField.Name = ts.Fields[0].Name
+									surfaceField.FieldName = ts.Fields[0].Name
+									//format = ts.Fields[0].Format
+								}
 							}
 						}
 						surfaceField.NativeType = "string"
