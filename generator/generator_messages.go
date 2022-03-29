@@ -37,6 +37,7 @@ func wrapperType(t string, format string) string {
 	switch t {
 	case "string":
 		return "google.protobuf.StringValue"
+
 	case "integer":
 		switch format {
 		case "int32":
@@ -50,10 +51,17 @@ func wrapperType(t string, format string) string {
 		default:
 			return "google.protobuf.Int64Value"
 		}
-	case "double":
-		return "google.protobuf.DoubleValue"
-	case "float":
-		return "google.protobuf.FloatValue"
+
+	case "number":
+		switch format {
+		case "double":
+			return "google.protobuf.DoubleValue"
+		case "float":
+			return "google.protobuf.FloatValue"
+		default:
+			return "google.protobuf.DoubleValue"
+		}
+
 	case "boolean":
 		return "google.protobuf.BoolValue"
 	case "bytes":
