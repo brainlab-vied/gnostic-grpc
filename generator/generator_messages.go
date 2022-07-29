@@ -36,6 +36,12 @@ func isScalarType(surfaceType *surface_v1.Type) bool {
 func wrapperType(t string, format string) string {
 	switch t {
 	case "string":
+		switch format {
+		case "binary":
+			return "google.protobuf.BytesValue"
+		case "bytes":
+			return "google.protobuf.BytesValue"
+		}
 		return "google.protobuf.StringValue"
 
 	case "integer":
@@ -64,6 +70,8 @@ func wrapperType(t string, format string) string {
 
 	case "boolean":
 		return "google.protobuf.BoolValue"
+	case "binary":
+		return "google.protobuf.BytesValue"
 	case "bytes":
 		return "google.protobuf.BytesValue"
 	case "arrayString":
