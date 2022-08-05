@@ -259,7 +259,6 @@ func getLast(protos []*dpb.FileDescriptorProto) *dpb.FileDescriptorProto {
 }
 
 func (renderer *Renderer) buildFileOptions() *dpb.FileOptions {
-	goPackage := "42p/" + renderer.Package
 	fileOptions := &dpb.FileOptions{
 		GoPackage: &goPackage,
 	}

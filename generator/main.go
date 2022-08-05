@@ -16,6 +16,7 @@ package generator
 
 import (
 	"errors"
+	"flag"
 	"go/format"
 	"path/filepath"
 	"strings"
@@ -25,6 +26,12 @@ import (
 	plugins "github.com/google/gnostic/plugins"
 	surface "github.com/google/gnostic/surface"
 )
+
+var goPackage = ""
+
+func init() {
+	flag.StringVar(&goPackage, "go_pkg", "42p/api", "option go_package")
+}
 
 // RunProtoGenerator generates a FileDescriptorSet from a gnostic output file.
 func RunProtoGenerator(env *plugins.Environment) {
