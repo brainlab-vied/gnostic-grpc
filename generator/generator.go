@@ -21,7 +21,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/42crunch/gnostic-grpc/utils"
+	"github.com/laurenz-eschwey-bl/gnostic-grpc/utils"
 	"github.com/golang/protobuf/descriptor"
 	dpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"github.com/golang/protobuf/ptypes/empty"

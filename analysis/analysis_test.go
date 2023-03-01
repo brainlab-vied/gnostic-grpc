@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/42crunch/gnostic-grpc/incompatibility"
+	"github.com/laurenz-eschwey-bl/gnostic-grpc/incompatibility"
 )
 
 // TestGenerateAnalysis is a simple test that tests if
