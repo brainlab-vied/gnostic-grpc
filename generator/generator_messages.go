@@ -14,6 +14,74 @@ var protoBufScalarTypes = getProtobufTypes()
 // Gathers all messages that have been generated from symbolic references in recursive calls.
 var generatedMessages = make(map[string]string, 0)
 
+// isScalarType find if the current type is a scalar type (one type and one field with format)
+func getType(types []*surface_v1.Type, name string) *surface_v1.Type {
+	for _, ts := range types {
+		if ts.TypeName == name {
+			return ts
+		}
+	}
+	return nil
+}
+func isScalarType(surfaceType *surface_v1.Type) bool {
+	return surfaceType != nil &&
+		len(surfaceType.Fields) == 1 &&
+		surfaceType.Fields[0].Name == "value" &&
+		surfaceType.Fields[0].Position != surface_v1.Position_QUERY &&
+		surfaceType.Fields[0].Position != surface_v1.Position_PATH &&
+		surfaceType.Fields[0].EnumValues == nil &&
+		(surfaceType.Fields[0].Kind == surface_v1.FieldKind_SCALAR || surfaceType.Fields[0].Kind == surface_v1.FieldKind_ARRAY)
+}
+
+func wrapperType(t string, format string) string {
+	switch t {
+	case "string":
+		switch format {
+		case "binary":
+			return "google.protobuf.BytesValue"
+		case "bytes":
+			return "google.protobuf.BytesValue"
+		}
+		return "google.protobuf.StringValue"
+
+	case "integer":
+		switch format {
+		case "int32":
+			return "google.protobuf.Int32Value"
+		case "int64":
+			return "google.protobuf.Int64Value"
+		case "uint64":
+			return "google.protobuf.UInt64Value"
+		case "uint32":
+			return "google.protobuf.UInt32Value"
+		default:
+			return "google.protobuf.Int64Value"
+		}
+
+	case "number":
+		switch format {
+		case "double":
+			return "google.protobuf.DoubleValue"
+		case "float":
+			return "google.protobuf.FloatValue"
+		default:
+			return "google.protobuf.DoubleValue"
+		}
+
+	case "boolean":
+		return "google.protobuf.BoolValue"
+	case "binary":
+		return "google.protobuf.BytesValue"
+	case "bytes":
+		return "google.protobuf.BytesValue"
+	case "arrayString":
+		return "ArrayString"
+
+	default:
+		return t
+	}
+}
+
 // buildAllMessageDescriptors builds protobuf messages from the surface model types. If the type is a RPC request parameter
 // the fields have to follow certain rules, and therefore have to be validated.
 func buildAllMessageDescriptors(renderer *Renderer) (messageDescriptors []*dpb.DescriptorProto, err error) {
@@ -21,18 +89,110 @@ func buildAllMessageDescriptors(renderer *Renderer) (messageDescriptors []*dpb.D
 		message := &dpb.DescriptorProto{}
 		message.Name = &surfaceType.TypeName
 
+		if surfaceType.ContentType == "ANY_OF" || surfaceType.ContentType == "ONE_OF" {
+			message.OneofDecl = []*dpb.OneofDescriptorProto{
+				{Name: &surfaceType.Name},
+			}
+		}
 		for i, surfaceField := range surfaceType.Fields {
+			var oneOfIndex *int32
+			if surfaceType.ContentType == "ANY_OF" || surfaceType.ContentType == "ONE_OF" {
+				b32 := int32(0)
+				oneOfIndex = &b32
+			}
+			format := ""
+			prefix := true
 			if strings.Contains(surfaceField.NativeType, "map[string][]") {
 				// Not supported for now: https://github.com/LorenzHW/gnostic-grpc-deprecated/issues/3#issuecomment-509348357
 				continue
 			}
 			if isRequestParameter(surfaceType) {
-				validateRequestParameter(surfaceField)
+
+				switch surfaceField.Position {
+				case surface_v1.Position_PATH:
+					if surfaceField.Kind == surface_v1.FieldKind_REFERENCE {
+						for _, ts := range renderer.Model.Types {
+							if ts.TypeName == surfaceField.Type {
+								if ts.Fields[0].Name != "value" {
+									surfaceField.Name = ts.Fields[0].Name
+									surfaceField.FieldName = ts.Fields[0].Name
+									//format = ts.Fields[0].Format
+								}
+							}
+						}
+						surfaceField.NativeType = "string"
+					} else {
+						surfaceField.Type = "string"
+						surfaceField.NativeType = "string"
+						//format = surfaceField.Format
+					}
+				case surface_v1.Position_QUERY:
+					if ts := getType(renderer.Model.Types, surfaceField.Type); ts != nil {
+						if ts.Fields[0].Type == "arrayString" {
+							format = surfaceField.Type
+							surfaceField.Type = "string"
+							surfaceField.NativeType = "string"
+							surfaceField.Kind = surface_v1.FieldKind_ARRAY
+							surfaceField.Name = ts.Fields[0].Name
+							surfaceField.FieldName = ts.Fields[0].Name
+						} else if ts.Fields[0].Kind == surface_v1.FieldKind_REFERENCE {
+							querySchema := getType(renderer.Model.Types, toCamelCase(ts.Fields[0].Type))
+							wt := wrapperType(querySchema.Fields[0].NativeType, querySchema.Fields[0].Format)
+							surfaceField.NativeType = wt
+							surfaceField.Name = ts.Fields[0].Name
+							surfaceField.FieldName = ts.Fields[0].FieldName
+							prefix = false
+						} else {
+							surfaceField.Name = ts.Fields[0].Name
+							surfaceField.FieldName = ts.Fields[0].Name
+							surfaceField.NativeType = wrapperType(ts.Fields[0].Type, ts.Fields[0].Format)
+							prefix = false
+						}
+					} else if querySchema := getType(renderer.Model.Types, toCamelCase(surfaceField.Type)); querySchema != nil {
+						wt := wrapperType(querySchema.Fields[0].NativeType, querySchema.Fields[0].Format)
+						surfaceField.NativeType = wt
+						surfaceField.Name = querySchema.Name
+						prefix = false
+					}
+				}
+			} else {
+				if ts := getType(renderer.Model.Types, surfaceField.NativeType); ts != nil && isScalarType(ts) {
+					if strings.Contains(strings.ToLower(surfaceField.Type), "nullable") {
+						surfaceField.NativeType = wrapperType(ts.Fields[0].Type, ts.Fields[0].Format)
+						prefix = false
+					} else {
+						surfaceField.NativeType = ts.Fields[0].NativeType
+						if ts.Fields[0].Kind == surface_v1.FieldKind_ARRAY {
+							surfaceField.Kind = ts.Fields[0].Kind
+						}
+					}
+					surfaceField.Format = ts.Fields[0].Format
+				}
+				format = surfaceField.Format
+
+				for _, ts := range renderer.Model.Types {
+					if surfaceField.Type == ts.Name {
+						for _, field := range ts.Fields {
+							if field.Kind == surface_v1.FieldKind_MAP && field.Name == "additional_properties" {
+								surfaceField.NativeType = field.NativeType
+								surfaceField.Kind = surface_v1.FieldKind_MAP
+							}
+						}
+					}
+					for _, field := range ts.Fields {
+
+						if field.EnumValues != nil {
+							field.NativeType = findNativeType(field.Type, field.Format)
+							field.EnumValues = nil
+						}
+					}
+				}
 			}
 
-			addFieldDescriptor(message, surfaceField, i, renderer.Package)
-			addEnumDescriptorIfNecessary(message, surfaceField)
+			addFieldDescriptor(message, surfaceField, i, renderer.Package, format, prefix, oneOfIndex)
+			//addEnumDescriptorIfNecessary(message, surfaceField)
 		}
+
 		messageDescriptors = append(messageDescriptors, message)
 		generatedMessages[*message.Name] = renderer.Package + "." + *message.Name
 	}
@@ -47,30 +207,33 @@ func isRequestParameter(sufaceType *surface_v1.Type) bool {
 	return false
 }
 
-func validateRequestParameter(field *surface_v1.Field) {
+func validateRequestParameter(field *surface_v1.Field) bool {
 	if field.Position == surface_v1.Position_PATH {
-		validatePathParameter(field)
+		return validatePathParameter(field)
 	}
 
 	if field.Position == surface_v1.Position_QUERY {
-		validateQueryParameter(field)
+		return validateQueryParameter(field)
 	}
+	return true
 }
 
 // validatePathParameter validates if the path parameter has the requested structure.
 // This is necessary according to: https://github.com/googleapis/googleapis/blob/master/google/api/http.proto#L62
-func validatePathParameter(field *surface_v1.Field) {
+func validatePathParameter(field *surface_v1.Field) bool {
 	if field.Kind != surface_v1.FieldKind_SCALAR {
 		log.Println("The path parameter with the Name " + field.Name + " is invalid. " +
 			"The path template may refer to one or more fields in the gRPC request message, as" +
 			" long as each field is a non-repeated field with a primitive (non-message) type. " +
 			"See: https://github.com/googleapis/googleapis/blob/master/google/api/http.proto#L62 for more information.")
+		return false
 	}
+	return true
 }
 
 // validateQueryParameter validates if the query parameter has the requested structure.
 // This is necessary according to: https://github.com/googleapis/googleapis/blob/master/google/api/http.proto#L118
-func validateQueryParameter(field *surface_v1.Field) {
+func validateQueryParameter(field *surface_v1.Field) bool {
 	_, isScalar := protoBufScalarTypes[field.NativeType]
 	if !(field.Kind == surface_v1.FieldKind_SCALAR ||
 		(field.Kind == surface_v1.FieldKind_ARRAY && isScalar) ||
@@ -79,17 +242,36 @@ func validateQueryParameter(field *surface_v1.Field) {
 			"Note that fields which are mapped to URL query parameters must have a primitive type or" +
 			" a repeated primitive type or a non-repeated message type. " +
 			"See: https://github.com/googleapis/googleapis/blob/master/google/api/http.proto#L118 for more information.")
+		return false
 	}
-
+	return true
 }
 
-func addFieldDescriptor(message *dpb.DescriptorProto, surfaceField *surface_v1.Field, idx int, packageName string) {
+func addFieldDescriptor(message *dpb.DescriptorProto, surfaceField *surface_v1.Field, idx int, packageName, format string, prefix bool, oneOfIndex *int32) {
 	count := int32(idx + 1)
 	fieldDescriptor := &dpb.FieldDescriptorProto{Number: &count, Name: &surfaceField.FieldName}
 	fieldDescriptor.Type = getFieldDescriptorType(surfaceField.NativeType, surfaceField.EnumValues)
 	fieldDescriptor.Label = getFieldDescriptorLabel(surfaceField)
-	fieldDescriptor.TypeName = getFieldDescriptorTypeName(*fieldDescriptor.Type, surfaceField, packageName)
-
+	fieldDescriptor.OneofIndex = oneOfIndex
+	fieldDescriptor.TypeName = getFieldDescriptorTypeName(*fieldDescriptor.Type, surfaceField, packageName, prefix)
+	fieldDescriptor.Options = &dpb.FieldOptions{
+		UninterpretedOption: []*dpb.UninterpretedOption{
+			//{
+			//	Name: []*dpb.UninterpretedOption_NamePart{
+			//		{NamePart: ptr("(validator.field)")},
+			//	},
+			//	AggregateValue: ptr("{int_gt: 0, int_lt: 100}"),
+			//},
+			{
+				Name: []*dpb.UninterpretedOption_NamePart{
+					{NamePart: ptr("json_name")},
+				},
+				AggregateValue: ptr(`"` + surfaceField.Name + `"]; // @gotags: json:"` + surfaceField.Name + `" format:"` + format + `" `),
+			},
+		},
+	}
+	if format != "" {
+	}
 	addMapDescriptorIfNecessary(surfaceField, fieldDescriptor, message)
 
 	message.Field = append(message.Field, fieldDescriptor)
@@ -107,12 +289,13 @@ func getFieldDescriptorType(nativeType string, enumValues []string) *dpb.FieldDe
 		return &protoType
 	}
 	return &protoType
+
 }
 
 // getFieldDescriptorTypeName returns the typeName of the descriptor. A TypeName has to be set if the field is a reference to another
 // descriptor or enum. Otherwise it is nil. Names are set according to the protocol buffer style guide for message names:
 // https://developers.google.com/protocol-buffers/docs/style#message-and-field-names
-func getFieldDescriptorTypeName(fieldDescriptorType descriptorpb.FieldDescriptorProto_Type, field *surface_v1.Field, packageName string) *string {
+func getFieldDescriptorTypeName(fieldDescriptorType descriptorpb.FieldDescriptorProto_Type, field *surface_v1.Field, packageName string, prefix bool) *string {
 	if fieldHasAReferenceToAMessageInAnotherDependency(field, fieldDescriptorType) {
 		t := generatedMessages[field.NativeType]
 		return &t
@@ -120,7 +303,11 @@ func getFieldDescriptorTypeName(fieldDescriptorType descriptorpb.FieldDescriptor
 
 	typeName := ""
 	if fieldDescriptorType == dpb.FieldDescriptorProto_TYPE_MESSAGE {
-		typeName = packageName + "." + field.NativeType
+		if prefix {
+			typeName = packageName + "." + field.NativeType
+		} else {
+			typeName = field.NativeType
+		}
 	}
 	if fieldDescriptorType == dpb.FieldDescriptorProto_TYPE_ENUM {
 		typeName = field.NativeType
@@ -151,6 +338,10 @@ func addMapDescriptorIfNecessary(f *surface_v1.Field, fieldDescriptor *dpb.Field
 		fieldDescriptor.TypeName = mapDescriptor.Name
 		message.NestedType = append(message.NestedType, mapDescriptor)
 	}
+}
+
+func ptr(s string) *string {
+	return &s
 }
 
 // buildMapDescriptor builds the necessary descriptor to render a map. (https://developers.google.com/protocol-buffers/docs/proto3#maps)
@@ -212,7 +403,7 @@ func buildEnumDescriptorProto(f *surface_v1.Field) *dpb.EnumDescriptorProto {
 	enumDescriptor := &dpb.EnumDescriptorProto{Name: &f.NativeType}
 	for enumCtr, value := range f.EnumValues {
 		num := int32(enumCtr)
-		name := strings.ToUpper(value)
+		name := value
 		valueDescriptor := &dpb.EnumValueDescriptorProto{
 			Name:   &name,
 			Number: &num,
