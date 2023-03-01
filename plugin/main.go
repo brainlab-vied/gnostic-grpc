@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package plugin
 
 import (
 	"errors"
 
 	plugins "github.com/google/gnostic/plugins"
 
-	"github.com/google/gnostic-grpc/generator"
-	"github.com/google/gnostic-grpc/incompatibility"
+	"github.com/42crunch/gnostic-grpc/generator"
+	"github.com/42crunch/gnostic-grpc/incompatibility"
 )
 
-func main() {
+func Main() {
 	env, err := plugins.NewEnvironment()
 	env.RespondAndExitIfError(err)
 	switch paramLen := len(env.Request.Parameters); paramLen {

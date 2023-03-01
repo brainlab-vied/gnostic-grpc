@@ -21,13 +21,13 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/42crunch/gnostic-grpc/utils"
 	"github.com/golang/protobuf/descriptor"
 	dpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"github.com/golang/protobuf/ptypes/empty"
 	surface_v1 "github.com/google/gnostic/surface"
 	"google.golang.org/genproto/googleapis/api/annotations"
-
-	"github.com/google/gnostic-grpc/utils"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // Gathers all symbolic references we generated in recursive calls.
@@ -145,7 +145,7 @@ func buildSymbolicReferences(renderer *Renderer) (symbolicFileDescriptors []*dpb
 			NewProtoLanguageModel().Prepare(surfaceModel, inputDocumentType)
 
 			// Recursively call the generator.
-			recursiveRenderer := NewRenderer(surfaceModel)
+			recursiveRenderer := NewRenderer(surfaceModel, document)
 			fileName := path.Base(ref)
 			recursiveRenderer.Package = strings.TrimSuffix(fileName, filepath.Ext(fileName))
 			newFdSet, err := recursiveRenderer.runFileDescriptorSetGenerator()
@@ -196,12 +196,16 @@ func buildDependencies() (dependencies []*dpb.FileDescriptorProto) {
 	fd.Name = &n                                                              // 2. Problem
 	fd.Dependency = append(fd.Dependency, "google/protobuf/descriptor.proto") //3.rd Problem
 
+	// Add wrappers
+	wrap := wrapperspb.StringValue{}
+	fd4, _ := descriptor.MessageDescriptorProto(&wrap)
+
 	// Build other required dependencies
 	e := empty.Empty{}
 	fdp := dpb.DescriptorProto{}
 	fd2, _ := descriptor.MessageDescriptorProto(&e)
 	fd3, _ := descriptor.MessageDescriptorProto(&fdp)
-	dependencies = []*dpb.FileDescriptorProto{fd, fd2, fd3}
+	dependencies = []*dpb.FileDescriptorProto{fd, fd2, fd3, fd4}
 	return dependencies
 }
 
@@ -255,7 +259,6 @@ func getLast(protos []*dpb.FileDescriptorProto) *dpb.FileDescriptorProto {
 }
 
 func (renderer *Renderer) buildFileOptions() *dpb.FileOptions {
-	goPackage := ".;" + renderer.Package
 	fileOptions := &dpb.FileOptions{
 		GoPackage: &goPackage,
 	}

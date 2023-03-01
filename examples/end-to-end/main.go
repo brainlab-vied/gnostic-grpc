@@ -15,7 +15,7 @@
 package main
 
 import (
-	"github.com/google/gnostic-grpc/examples/end-to-end/bookstore"
+	"github.com/42crunch/gnostic-grpc/examples/end-to-end/bookstore"
 )
 
 func main() {

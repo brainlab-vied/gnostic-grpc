@@ -17,9 +17,12 @@ package generator
 import (
 	openapiv3 "github.com/google/gnostic/openapiv3"
 	plugins "github.com/google/gnostic/plugins"
+	surface "github.com/google/gnostic/surface"
 )
 
 type GrpcChecker struct {
+	// The surface to fill
+	surface *surface.Model
 	// The document to be analyzed
 	document *openapiv3.Document
 	// The messages that are displayed to the user with information of what is not being processed by the generator.
@@ -27,8 +30,8 @@ type GrpcChecker struct {
 }
 
 // Creates a new checker.
-func NewGrpcChecker(document *openapiv3.Document) *GrpcChecker {
-	return &GrpcChecker{document: document, messages: make([]*plugins.Message, 0)}
+func NewGrpcChecker(surface *surface.Model, document *openapiv3.Document) *GrpcChecker {
+	return &GrpcChecker{surface: surface, document: document, messages: make([]*plugins.Message, 0)}
 }
 
 // Runs the checker. It is a top-down approach.
@@ -39,12 +42,12 @@ func (c *GrpcChecker) Run() []*plugins.Message {
 
 // Analyzes the root object.
 func (c *GrpcChecker) analyzeOpenAPIDocument() {
-	fields := getNotSupportedOpenAPIDocumentFields(c.document)
-	for _, f := range fields {
-		text := "Field: '" + f + "' is not supported for the OpenAPI document with title: " + c.document.Info.Title
-		msg := constructInfoMessage("DOCUMENTFIELDS", text, []string{f})
-		c.messages = append(c.messages, &msg)
-	}
+	//fields := getNotSupportedOpenAPIDocumentFields(c.document)
+	//for _, f := range fields {
+	//	text := "Field: '" + f + "' is not supported for the OpenAPI document with title: " + c.document.Info.Title
+	//	msg := constructInfoMessage("DOCUMENTFIELDS", text, []string{f})
+	//	c.messages = append(c.messages, &msg)
+	//}
 	c.analyzeComponents()
 	c.analyzePaths()
 }
@@ -54,13 +57,13 @@ func (c *GrpcChecker) analyzeComponents() {
 	components := c.document.Components
 	currentKeys := []string{"components"}
 
-	fields := getNotSupportedComponentsFields(components)
-	for _, f := range fields {
-		text := "Field: '" + f + "' is not supported for the component"
-		msg := constructInfoMessage("COMPONENTSFIELDS", text, append(copyKeys(currentKeys), f))
-		c.messages = append(c.messages, &msg)
-	}
-
+	//fields := getNotSupportedComponentsFields(components)
+	//for _, f := range fields {
+	//	text := "Field: '" + f + "' is not supported for the component"
+	//	msg := constructInfoMessage("COMPONENTSFIELDS", text, append(copyKeys(currentKeys), f))
+	//	c.messages = append(c.messages, &msg)
+	//}
+	//
 	if schemas := components.GetSchemas(); schemas != nil {
 		for _, pair := range schemas.AdditionalProperties {
 			parentKeys := append(currentKeys, []string{"schemas", pair.Name}...)
@@ -120,19 +123,19 @@ func (c *GrpcChecker) analyzePathItem(pair *openapiv3.NamedPathItem, parentKeys 
 // Analyzes a single Operation.
 func (c *GrpcChecker) analyzeOperation(operation *openapiv3.Operation, parentKeys []string) {
 	currentKeys := parentKeys
-	fields := getNotSupportedOperationFields(operation)
+	//fields := getNotSupportedOperationFields(operation)
 
-	if len(operation.OperationId) == 0 {
-		text := "One of your operations does not have an 'operationId'. gnostic-grpc might produce an incorrect output file."
-		msg := constructWarningMessage("OPERATION", text, currentKeys)
-		c.messages = append(c.messages, &msg)
-	}
+	//if len(operation.OperationId) == 0 {
+	//	text := "One of your operations does not have an 'operationId'. gnostic-grpc might produce an incorrect output file."
+	//	msg := constructWarningMessage("OPERATION", text, currentKeys)
+	//	c.messages = append(c.messages, &msg)
+	//}
 
-	for _, f := range fields {
-		text := "Field: '" + f + "' is not supported for operation: " + operation.OperationId
-		msg := constructInfoMessage("OPERATIONFIELDS", text, append(copyKeys(currentKeys), f))
-		c.messages = append(c.messages, &msg)
-	}
+	//for _, f := range fields {
+	//	text := "Field: '" + f + "' is not supported for operation: " + operation.OperationId
+	//	msg := constructInfoMessage("OPERATIONFIELDS", text, append(copyKeys(currentKeys), f))
+	//	c.messages = append(c.messages, &msg)
+	//}
 
 	for _, param := range operation.Parameters {
 		pKeys := append(currentKeys, "parameters")
@@ -161,12 +164,12 @@ func (c *GrpcChecker) analyzeParameter(paramOrRef *openapiv3.ParameterOrReferenc
 	currentKeys := parentKeys
 
 	if parameter := paramOrRef.GetParameter(); parameter != nil {
-		fields := getNotSupportedParameterFields(parameter)
-		for _, f := range fields {
-			text := "Field: '" + f + "' is not supported for parameter: " + parameter.Name
-			msg := constructInfoMessage("PARAMETERFIELDS", text, append(copyKeys(currentKeys), f))
-			c.messages = append(c.messages, &msg)
-		}
+		//fields := getNotSupportedParameterFields(parameter)
+		//for _, f := range fields {
+		//	text := "Field: '" + f + "' is not supported for parameter: " + parameter.Name
+		//	msg := constructInfoMessage("PARAMETERFIELDS", text, append(copyKeys(currentKeys), f))
+		//	c.messages = append(c.messages, &msg)
+		//}
 
 		pKeys := append(currentKeys, "schema")
 		c.analyzeSchema(parameter.Name, parameter.Schema, pKeys)
@@ -198,11 +201,11 @@ func (c *GrpcChecker) analyzeRequestBody(pair *openapiv3.NamedRequestBodyOrRefer
 	currentKeys := parentKeys
 
 	if requestBody := pair.Value.GetRequestBody(); requestBody != nil {
-		if requestBody.Required {
-			text := "Field: 'required' is not supported for the request: " + pair.Name
-			msg := constructInfoMessage("REQUESTBODYFIELDS", text, append(copyKeys(currentKeys), "required"))
-			c.messages = append(c.messages, &msg)
-		}
+		//if requestBody.Required {
+		//	text := "Field: 'required' is not supported for the request: " + pair.Name
+		//	msg := constructInfoMessage("REQUESTBODYFIELDS", text, append(copyKeys(currentKeys), "required"))
+		//	c.messages = append(c.messages, &msg)
+		//}
 		for _, pair := range requestBody.Content.AdditionalProperties {
 			pKeys := append(currentKeys, []string{"content", pair.Name}...)
 			c.analyzeContent(pair, pKeys)
@@ -228,17 +231,49 @@ func (c *GrpcChecker) analyzeContent(pair *openapiv3.NamedMediaType, parentKeys 
 	}
 }
 
+func oneOf(surfaceType *surface.Type, of []*openapiv3.SchemaOrReference, ofType string) {
+	surfaceType.ContentType = ofType
+	surfaceType.Fields = []*surface.Field{}
+
+	for _, o := range of {
+		ref := o.GetReference().XRef
+		name := toCamelCase(getRefName(ref))
+		surfaceType.Fields = append(surfaceType.Fields, &surface.Field{
+			Name:          name,
+			Type:          name,
+			NativeType:    name,
+			FieldName:     name,
+			ParameterName: name,
+		})
+	}
+}
+
 // Analyzes the schema.
 func (c *GrpcChecker) analyzeSchema(identifier string, schemaOrReference *openapiv3.SchemaOrReference, parentKeys []string) {
 	currentKeys := parentKeys
+	surfaceType := getType(c.surface.Types, toCamelCase(identifier))
 
 	if schema := schemaOrReference.GetSchema(); schema != nil {
-		fields := getNotSupportedSchemaFields(schema)
-		for _, f := range fields {
-			text := "Field: '" + f + "' is not supported for the schema: " + identifier
-			msg := constructInfoMessage("SCHEMAFIELDS", text, append(copyKeys(currentKeys), f))
-			c.messages = append(c.messages, &msg)
+		//if isScalarType(surfaceType) {
+		//	b, err := json.Marshal(schema)
+		//	if err != nil {
+		//		log.Printf("cannot unmarshall schema: %v", err)
+		//	}
+		//	surfaceType.Fields[0].Format = string(b)
+		//}
+
+		if schema.OneOf != nil {
+			oneOf(surfaceType, schema.OneOf, "ONE_OF")
+		} else if schema.AnyOf != nil {
+			oneOf(surfaceType, schema.AnyOf, "ANY_OF")
 		}
+
+		//fields := getNotSupportedSchemaFields(schema)
+		//for _, f := range fields {
+		//	text := "Field: '" + f + "' is not supported for the schema: " + identifier
+		//	msg := constructInfoMessage("SCHEMAFIELDS", text, append(copyKeys(currentKeys), f))
+		//	c.messages = append(c.messages, &msg)
+		//}
 
 		// Check for this: https://github.com/LorenzHW/gnostic-grpc-deprecated/issues/3#issuecomment-509348357
 		if additionalProperties := schema.AdditionalProperties; additionalProperties != nil {
