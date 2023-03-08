@@ -20,8 +20,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"log"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 	openapiv3 "github.com/google/gnostic/openapiv3"
 	plugins "github.com/google/gnostic/plugins"
 	surface "github.com/google/gnostic/surface"
@@ -38,6 +39,7 @@ func init() {
 
 // RunProtoGenerator generates a FileDescriptorSet from a gnostic output file.
 func RunProtoGenerator(env *plugins.Environment) {
+	log.Print("RunProtoGenerator")
 	fileName := getFilenameWithoutFileExtension(env)
 	packageName, err := resolvePackageName(fileName)
 	env.RespondAndExitIfError(err)
@@ -50,12 +52,14 @@ func RunProtoGenerator(env *plugins.Environment) {
 	for _, model := range env.Request.Models {
 		switch model.TypeUrl {
 		case "openapi.v3.Document":
+			log.Print("openapi.v3.Document")
 			err := proto.Unmarshal(model.Value, openAPIdocument)
 
 			if err != nil {
 				panic(err)
 			}
 		case "surface.v1.Model":
+			log.Print("openapi.v3.Document")
 			err = proto.Unmarshal(model.Value, surfaceModel)
 			if err != nil {
 				panic(err)
@@ -71,9 +75,11 @@ func RunProtoGenerator(env *plugins.Environment) {
 	renderer.Package = packageName
 
 	featureChecker := NewGrpcChecker(surfaceModel, openAPIdocument)
+	log.Print("featureChecker")
 	env.Response.Messages = featureChecker.Run()
 
 	// Run the renderer to generate files and add them to the response object.
+	log.Print("Render")
 	err = renderer.Render(env.Response, "apid.proto")
 	env.RespondAndExitIfError(err)
 	// Return with success.

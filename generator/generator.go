@@ -20,11 +20,12 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"log"
 
 	"github.com/laurenz-eschwey-bl/gnostic-grpc/utils"
 	"github.com/golang/protobuf/descriptor"
-	dpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
-	"github.com/golang/protobuf/ptypes/empty"
+	dpb "google.golang.org/protobuf/types/descriptorpb"
+	"google.golang.org/protobuf/types/known/emptypb"
 	surface_v1 "github.com/google/gnostic/surface"
 	"google.golang.org/genproto/googleapis/api/annotations"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -32,6 +33,26 @@ import (
 
 // Gathers all symbolic references we generated in recursive calls.
 var generatedSymbolicReferences = make(map[string]bool, 0)
+
+func unique(intSlice []*dpb.FileDescriptorProto) []*dpb.FileDescriptorProto {
+    keys := make(map[string]bool)
+    list := []*dpb.FileDescriptorProto{}	
+    for _, entry := range intSlice {
+        if _, value := keys[*(entry.Name)]; !value {
+			//log.Print("fileDescriptor:", *entry.Name)
+            keys[*(entry.Name)] = true
+            list = append(list, entry)
+        }
+    }    
+    return list
+}
+
+func logEnties(intSlice []*dpb.FileDescriptorProto) {
+    for _, entry := range intSlice {
+        log.Print(*(entry.Name))
+	}
+    return
+}
 
 // Uses the output of gnostic to return a dpb.FileDescriptorSet (in bytes). 'renderer' contains
 // the 'model' (surface model) which has all the relevant data to create the dpb.FileDescriptorSet.
@@ -45,6 +66,7 @@ var generatedSymbolicReferences = make(map[string]bool, 0)
 func (renderer *Renderer) runFileDescriptorSetGenerator() (fdSet *dpb.FileDescriptorSet, err error) {
 	syntax := "proto3"
 	n := renderer.Package + ".proto"
+	log.Print("runFileDescriptorSetGenerator")
 
 	protoToBeRendered := &dpb.FileDescriptorProto{
 		Name:    &n,
@@ -54,26 +76,36 @@ func (renderer *Renderer) runFileDescriptorSetGenerator() (fdSet *dpb.FileDescri
 
 	allMessages, err := buildAllMessageDescriptors(renderer)
 	if err != nil {
+		log.Print("buildAllMessageDescriptors failed")
 		return nil, err
 	}
+	//log.Print("allMessages:", allMessages)
 	protoToBeRendered.MessageType = allMessages
 
 	allServices, err := buildAllServiceDescriptors(protoToBeRendered.MessageType, renderer)
 	if err != nil {
+		log.Print("buildAllServiceDescriptors failed")
 		return nil, err
 	}
+	//log.Print("allServices:", allServices)
 	protoToBeRendered.Service = allServices
 
 	sourceCodeInfo, err := buildSourceCodeInfo(renderer.Model.Types)
 	if err != nil {
+		log.Print("buildSourceCodeInfo failed")
 		return nil, err
 	}
+	//log.Print("sourceCodeInfo:", sourceCodeInfo)
 	protoToBeRendered.SourceCodeInfo = sourceCodeInfo
 
+	log.Print("buildSymbolicReferences")
 	symbolicReferenceDependencies, err := buildSymbolicReferences(renderer)
 	if err != nil {
+		log.Print("symbolicReferenceDependencies failed")
 		return nil, err
 	}
+	log.Print("symbolicReferenceDependencies:", len(symbolicReferenceDependencies))
+	//logEnties(symbolicReferenceDependencies);
 	dependencies := buildDependencies()
 	dependencies = append(dependencies, symbolicReferenceDependencies...)
 	dependencyNames := getNamesOfDependenciesThatWillBeImported(dependencies, renderer.Model.Methods)
@@ -82,11 +114,23 @@ func (renderer *Renderer) runFileDescriptorSetGenerator() (fdSet *dpb.FileDescri
 	fileOptions := renderer.buildFileOptions()
 	protoToBeRendered.Options = fileOptions
 
-	allFileDescriptors := append(symbolicReferenceDependencies, dependencies...)
+	//allFileDescriptors := append(symbolicReferenceDependencies, dependencies...)
+	allFileDescriptors := append(dependencies, symbolicReferenceDependencies...)
+	log.Print("1. allFileDescriptors:", len(allFileDescriptors))
+	//logEnties(allFileDescriptors);
 	allFileDescriptors = append(allFileDescriptors, protoToBeRendered)
+
+	log.Print("2. allFileDescriptors:", len(allFileDescriptors))
+	//logEnties(allFileDescriptors);
+	uniqueFileDescriptors := unique(allFileDescriptors)
+	log.Print("uniqueFileDescriptors:", len(uniqueFileDescriptors))
+	//logEnties(uniqueFileDescriptors);
 	fdSet = &dpb.FileDescriptorSet{
+		//File: uniqueFileDescriptors,
 		File: allFileDescriptors,
 	}
+	//log.Print("fdSet:", fdSet)
+	log.Print("runFileDescriptorSetGenerator done")
 
 	return fdSet, err
 }
@@ -99,6 +143,7 @@ func buildSourceCodeInfo(types []*surface_v1.Type) (sourceCodeInfo *dpb.SourceCo
 		location := &dpb.SourceCodeInfo_Location{
 			Path:            []int32{4, int32(idx)},
 			LeadingComments: &surfaceType.Description,
+			Span:			 []int32{int32(idx), 0, 255},
 		}
 		allLocations = append(allLocations, location)
 	}
@@ -161,6 +206,14 @@ func buildSymbolicReferences(renderer *Renderer) (symbolicFileDescriptors []*dpb
 	return symbolicFileDescriptors, nil
 }
 
+func contains(s []string, e string) bool {
+    for _, a := range s {
+        if a == e {
+            return true
+        }
+    }
+    return false
+}
 // Protoreflect needs all the dependencies that are used inside of the FileDescriptorProto (that gets rendered)
 // to work properly. Those dependencies are google/protobuf/empty.proto, google/api/annotations.proto,
 // and "google/protobuf/descriptor.proto". For all those dependencies the corresponding
@@ -173,35 +226,41 @@ func buildDependencies() (dependencies []*dpb.FileDescriptorProto) {
 	//				then construct the extension manually.
 	// 2. Problem: 	The name is set wrong.
 	// 3. Problem: 	google/api/annotations.proto has a dependency to google/protobuf/descriptor.proto.
+
 	http := annotations.Http{}
 	fd, _ := descriptor.MessageDescriptorProto(&http)
+	if !contains(fd.Dependency, "google/protobuf/descriptor.proto")	{
+		extensionName := "http"
+		n := "google/api/annotations.proto"
+		l := dpb.FieldDescriptorProto_LABEL_OPTIONAL
+		t := dpb.FieldDescriptorProto_TYPE_MESSAGE
+		tName := "google.api.HttpRule"
+		extendee := ".google.protobuf.MethodOptions"
 
-	extensionName := "http"
-	n := "google/api/annotations.proto"
-	l := dpb.FieldDescriptorProto_LABEL_OPTIONAL
-	t := dpb.FieldDescriptorProto_TYPE_MESSAGE
-	tName := "google.api.HttpRule"
-	extendee := ".google.protobuf.MethodOptions"
+		httpExtension := &dpb.FieldDescriptorProto{
+			Name:     &extensionName,
+			Number:   &annotations.E_Http.Field,
+			Label:    &l,
+			Type:     &t,
+			TypeName: &tName,
+			Extendee: &extendee,
+		}
 
-	httpExtension := &dpb.FieldDescriptorProto{
-		Name:     &extensionName,
-		Number:   &annotations.E_Http.Field,
-		Label:    &l,
-		Type:     &t,
-		TypeName: &tName,
-		Extendee: &extendee,
+		fd.Extension = append(fd.Extension, httpExtension)                        // 1. Problem
+		fd.Name = &n                                                              // 2. Problem
+		log.Print("fd.Dependency: ", fd.Dependency)
+		fd.Dependency = append(fd.Dependency, "google/protobuf/descriptor.proto") //3.rd Problem
+		log.Print("fd: ", fd)
+	} else {
+		log.Print("already in")
 	}
-
-	fd.Extension = append(fd.Extension, httpExtension)                        // 1. Problem
-	fd.Name = &n                                                              // 2. Problem
-	fd.Dependency = append(fd.Dependency, "google/protobuf/descriptor.proto") //3.rd Problem
 
 	// Add wrappers
 	wrap := wrapperspb.StringValue{}
 	fd4, _ := descriptor.MessageDescriptorProto(&wrap)
 
 	// Build other required dependencies
-	e := empty.Empty{}
+	e := emptypb.Empty{}
 	fdp := dpb.DescriptorProto{}
 	fd2, _ := descriptor.MessageDescriptorProto(&e)
 	fd3, _ := descriptor.MessageDescriptorProto(&fdp)

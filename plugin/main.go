@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"errors"
+	"log"
 
 	plugins "github.com/google/gnostic/plugins"
 
@@ -24,6 +25,7 @@ import (
 )
 
 func Main() {
+	log.Print("plugin main")
 	env, err := plugins.NewEnvironment()
 	env.RespondAndExitIfError(err)
 	switch paramLen := len(env.Request.Parameters); paramLen {

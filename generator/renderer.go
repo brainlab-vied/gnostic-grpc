@@ -15,8 +15,9 @@
 package generator
 
 import (
-	"github.com/golang/protobuf/proto"
-	dpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
+	"log"
+	"google.golang.org/protobuf/proto"
+	dpb "google.golang.org/protobuf/types/descriptorpb"
 	openapiv3 "github.com/google/gnostic/openapiv3"
 	plugins "github.com/google/gnostic/plugins"
 	surface "github.com/google/gnostic/surface"
@@ -46,15 +47,18 @@ func NewRenderer(model *surface.Model, OAS3 *openapiv3.Document) (renderer *Rend
 
 // Render runs the renderer to generate the named files.
 func (renderer *Renderer) Render(response *plugins.Response, fileName string) (err error) {
+	log.Print("Render")
 	renderer.FdSet, err = renderer.runFileDescriptorSetGenerator()
 
 	if err != nil {
+		log.Print("runFileDescriptorSetGenerator failed")
 		return err
 	}
 
 	if false { //TODO: If we want to generate the descriptor file, we need an additional flag here!
 		f, err := renderer.RenderDescriptor()
 		if err != nil {
+			log.Print("RenderDescriptor failed")
 			return err
 		}
 		response.Files = append(response.Files, f)
@@ -63,6 +67,7 @@ func (renderer *Renderer) Render(response *plugins.Response, fileName string) (e
 	// Render main proto definition.
 	f, err := renderer.RenderProto(renderer.FdSet, fileName)
 	if err != nil {
+		log.Print("RenderProto main failed")
 		return err
 	}
 	response.Files = append(response.Files, f)
@@ -71,6 +76,7 @@ func (renderer *Renderer) Render(response *plugins.Response, fileName string) (e
 	for _, externalSet := range renderer.SymbolicFdSets {
 		f, err = renderer.RenderProto(externalSet, *getLast(externalSet.File).Name)
 		if err != nil {
+			log.Print("RenderProto ext failed")
 			return err
 		}
 		response.Files = append(response.Files, f)
@@ -80,9 +86,11 @@ func (renderer *Renderer) Render(response *plugins.Response, fileName string) (e
 }
 
 func (renderer *Renderer) RenderProto(fdSet *dpb.FileDescriptorSet, fileName string) (*plugins.File, error) {
+	log.Print("files: ", fdSet)
 	// Creates a protoreflect FileDescriptor, which is then used for printing.
 	prFd, err := prDesc.CreateFileDescriptorFromSet(fdSet)
 	if err != nil {
+		log.Print("CreateFileDescriptorFromSet failed")
 		return nil, err
 	}
 
@@ -90,6 +98,7 @@ func (renderer *Renderer) RenderProto(fdSet *dpb.FileDescriptorSet, fileName str
 	p := prPrint.Printer{}
 	res, err := p.PrintProtoToString(prFd)
 	if err != nil {
+		log.Print("PrintProtoToString failed")
 		return nil, err
 	}
 
