@@ -4,7 +4,7 @@ import (
 	"log"
 	"strings"
 
-	dpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
+	dpb "google.golang.org/protobuf/types/descriptorpb"
 	surface_v1 "github.com/google/gnostic/surface"
 	"google.golang.org/protobuf/types/descriptorpb"
 )
