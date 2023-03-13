@@ -17,10 +17,8 @@ package generator
 import (
 	"errors"
 	"go/format"
-	"os"
 	"path/filepath"
 	"strings"
-	"log"
 
 	"google.golang.org/protobuf/proto"
 	openapiv3 "github.com/google/gnostic/openapiv3"
@@ -28,22 +26,11 @@ import (
 	surface "github.com/google/gnostic/surface"
 )
 
-var goPackage = "42p/api"
-
-func init() {
-	GO_PKG := os.Getenv("GO_PKG")
-	if GO_PKG != "" {
-		goPackage = GO_PKG
-	}
-}
-
 // RunProtoGenerator generates a FileDescriptorSet from a gnostic output file.
 func RunProtoGenerator(env *plugins.Environment) {
-	log.Print("RunProtoGenerator")
 	fileName := getFilenameWithoutFileExtension(env)
 	packageName, err := resolvePackageName(fileName)
 	env.RespondAndExitIfError(err)
-	packageName = "api"
 
 	openAPIdocument := &openapiv3.Document{}
 	surfaceModel := &surface.Model{}
@@ -52,14 +39,12 @@ func RunProtoGenerator(env *plugins.Environment) {
 	for _, model := range env.Request.Models {
 		switch model.TypeUrl {
 		case "openapi.v3.Document":
-			log.Print("openapi.v3.Document")
 			err := proto.Unmarshal(model.Value, openAPIdocument)
 
 			if err != nil {
 				panic(err)
 			}
 		case "surface.v1.Model":
-			log.Print("openapi.v3.Document")
 			err = proto.Unmarshal(model.Value, surfaceModel)
 			if err != nil {
 				panic(err)
@@ -75,11 +60,9 @@ func RunProtoGenerator(env *plugins.Environment) {
 	renderer.Package = packageName
 
 	featureChecker := NewGrpcChecker(surfaceModel, openAPIdocument)
-	log.Print("featureChecker")
 	env.Response.Messages = featureChecker.Run()
 
 	// Run the renderer to generate files and add them to the response object.
-	log.Print("Render")
 	err = renderer.Render(env.Response, "apid.proto")
 	env.RespondAndExitIfError(err)
 	// Return with success.

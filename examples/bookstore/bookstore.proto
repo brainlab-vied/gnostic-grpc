@@ -8,112 +8,152 @@ import "google/protobuf/descriptor.proto";
 
 import "google/protobuf/empty.proto";
 
+import "google/protobuf/wrappers.proto";
+
 option go_package = ".;bookstore";
 
 message Book {
-  string author = 1;
+  string author = 1 [
+    json_name = "author"]; // @gotags: json:"author" format:"" 
+  ];
 
-  string name = 2;
+  string name = 2 [
+    json_name = "name"]; // @gotags: json:"name" format:"" 
+  ];
 
-  string title = 3;
+  string title = 3 [
+    json_name = "title"]; // @gotags: json:"title" format:"" 
+  ];
 }
 
 message ListBooksResponse {
-  repeated Book books = 1;
+  repeated Book books = 1 [
+    json_name = "books"]; // @gotags: json:"books" format:"" 
+  ];
 }
 
 message ListShelvesResponse {
-  repeated Shelf shelves = 1;
+  repeated Shelf shelves = 1 [
+    json_name = "shelves"]; // @gotags: json:"shelves" format:"" 
+  ];
 }
 
 message Shelf {
-  string name = 1;
+  string name = 1 [
+    json_name = "name"]; // @gotags: json:"name" format:"" 
+  ];
 
-  string theme = 2;
+  string theme = 2 [
+    json_name = "theme"]; // @gotags: json:"theme" format:"" 
+  ];
 }
 
 message Error {
-  int32 code = 1;
+  int32 code = 1 [
+    json_name = "code"]; // @gotags: json:"code" format:"int32" 
+  ];
 
-  string message = 2;
+  string message = 2 [
+    json_name = "message"]; // @gotags: json:"message" format:"" 
+  ];
 }
 
-//CreateShelfParameters holds parameters to CreateShelf
+// CreateShelfParameters holds parameters to CreateShelf
 message CreateShelfRequest {
-  Shelf shelf = 1;
+  Shelf shelf = 1 [
+    json_name = "request_body"]; // @gotags: json:"request_body" format:"" 
+  ];
 }
 
-//GetShelfParameters holds parameters to GetShelf
+// GetShelfParameters holds parameters to GetShelf
 message GetShelfRequest {
-  int64 shelf = 1;
+  string shelf = 1 [
+    json_name = "shelf"]; // @gotags: json:"shelf" format:"" 
+  ];
 }
 
-//DeleteShelfParameters holds parameters to DeleteShelf
+// DeleteShelfParameters holds parameters to DeleteShelf
 message DeleteShelfRequest {
-  int64 shelf = 1;
+  string shelf = 1 [
+    json_name = "shelf"]; // @gotags: json:"shelf" format:"" 
+  ];
 }
 
-//ListBooksParameters holds parameters to ListBooks
+// ListBooksParameters holds parameters to ListBooks
 message ListBooksRequest {
-  int64 shelf = 1;
+  string shelf = 1 [
+    json_name = "shelf"]; // @gotags: json:"shelf" format:"" 
+  ];
 }
 
-//CreateBookParameters holds parameters to CreateBook
+// CreateBookParameters holds parameters to CreateBook
 message CreateBookRequest {
-  int64 shelf = 1;
+  string shelf = 1 [
+    json_name = "shelf"]; // @gotags: json:"shelf" format:"" 
+  ];
 
-  Book book = 2;
+  Book book = 2 [
+    json_name = "request_body"]; // @gotags: json:"request_body" format:"" 
+  ];
 }
 
-//GetBookParameters holds parameters to GetBook
+// GetBookParameters holds parameters to GetBook
 message GetBookRequest {
-  int64 shelf = 1;
+  string shelf = 1 [
+    json_name = "shelf"]; // @gotags: json:"shelf" format:"" 
+  ];
 
-  int64 book = 2;
+  string book = 2 [
+    json_name = "book"]; // @gotags: json:"book" format:"" 
+  ];
 }
 
-//DeleteBookParameters holds parameters to DeleteBook
+// DeleteBookParameters holds parameters to DeleteBook
 message DeleteBookRequest {
-  int64 shelf = 1;
+  string shelf = 1 [
+    json_name = "shelf"]; // @gotags: json:"shelf" format:"" 
+  ];
 
-  int64 book = 2;
+  string book = 2 [
+    json_name = "book"]; // @gotags: json:"book" format:"" 
+  ];
 }
 
 service Bookstore {
   rpc ListShelves ( google.protobuf.Empty ) returns ( ListShelvesResponse ) {
-    option (google.api.http) = { get:"/shelves"  };
+    option (google.api.http) = { get: "/shelves" };
   }
 
   rpc CreateShelf ( CreateShelfRequest ) returns ( Shelf ) {
-    option (google.api.http) = { post:"/shelves" body:"shelf"  };
+    option (google.api.http) = { post: "/shelves", body: "shelf" };
   }
 
   rpc DeleteShelves ( google.protobuf.Empty ) returns ( google.protobuf.Empty ) {
-    option (google.api.http) = { delete:"/shelves"  };
+    option (google.api.http) = { delete: "/shelves" };
   }
 
   rpc GetShelf ( GetShelfRequest ) returns ( Shelf ) {
-    option (google.api.http) = { get:"/shelves/{shelf}"  };
+    option (google.api.http) = { get: "/shelves/{shelf}" };
   }
 
   rpc DeleteShelf ( DeleteShelfRequest ) returns ( google.protobuf.Empty ) {
-    option (google.api.http) = { delete:"/shelves/{shelf}"  };
+    option (google.api.http) = { delete: "/shelves/{shelf}" };
   }
 
   rpc ListBooks ( ListBooksRequest ) returns ( ListBooksResponse ) {
-    option (google.api.http) = { get:"/shelves/{shelf}/books"  };
+    option (google.api.http) = { get: "/shelves/{shelf}/books" };
   }
 
   rpc CreateBook ( CreateBookRequest ) returns ( Book ) {
-    option (google.api.http) = { post:"/shelves/{shelf}/books" body:"book"  };
+    option (google.api.http) = { post: "/shelves/{shelf}/books", body: "book" };
   }
 
   rpc GetBook ( GetBookRequest ) returns ( Book ) {
-    option (google.api.http) = { get:"/shelves/{shelf}/books/{book}"  };
+    option (google.api.http) = { get: "/shelves/{shelf}/books/{book}" };
   }
 
   rpc DeleteBook ( DeleteBookRequest ) returns ( google.protobuf.Empty ) {
-    option (google.api.http) = { delete:"/shelves/{shelf}/books/{book}"  };
+    option (google.api.http) = { delete: "/shelves/{shelf}/books/{book}" };
   }
 }
 
