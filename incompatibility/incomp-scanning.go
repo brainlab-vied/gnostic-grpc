@@ -26,8 +26,8 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
-	"github.com/laurenz-eschwey-bl/gnostic-grpc/search"
-	"github.com/laurenz-eschwey-bl/gnostic-grpc/utils"
+	"github.com/brainlab-vied/gnostic-grpc/search"
+	"github.com/brainlab-vied/gnostic-grpc/utils"
 )
 
 type Report int

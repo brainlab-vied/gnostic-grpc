@@ -24,7 +24,7 @@ import (
 
 	surface "github.com/google/gnostic/surface"
 
-	"github.com/laurenz-eschwey-bl/gnostic-grpc/utils"
+	"github.com/brainlab-vied/gnostic-grpc/utils"
 )
 
 const (

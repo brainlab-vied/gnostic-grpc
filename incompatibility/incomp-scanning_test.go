@@ -26,8 +26,8 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"gopkg.in/yaml.v3"
 
-	"github.com/laurenz-eschwey-bl/gnostic-grpc/search"
-	"github.com/laurenz-eschwey-bl/gnostic-grpc/utils"
+	"github.com/brainlab-vied/gnostic-grpc/search"
+	"github.com/brainlab-vied/gnostic-grpc/utils"
 )
 
 // Helper Test Function generate OpenAPI representation or Error

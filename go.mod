@@ -1,4 +1,4 @@
-module github.com/laurenz-eschwey-bl/gnostic-grpc
+module github.com/brainlab-vied/gnostic-grpc
 
 go 1.20
 

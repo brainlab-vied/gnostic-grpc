@@ -1,6 +1,6 @@
 package main
 
-import "github.com/laurenz-eschwey-bl/gnostic-grpc/plugin"
+import "github.com/brainlab-vied/gnostic-grpc/plugin"
 
 //go:generate sh COMPILE-PROTOS.sh
 

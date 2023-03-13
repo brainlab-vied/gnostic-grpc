@@ -27,7 +27,7 @@ import (
 	surface_v1 "github.com/google/gnostic/surface"
 	"google.golang.org/genproto/googleapis/api/annotations"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-	"github.com/laurenz-eschwey-bl/gnostic-grpc/utils"
+	"github.com/brainlab-vied/gnostic-grpc/utils"
 )
 
 // Gathers all symbolic references we generated in recursive calls.

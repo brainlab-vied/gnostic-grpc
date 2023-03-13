@@ -25,8 +25,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/laurenz-eschwey-bl/gnostic-grpc/incompatibility"
-	"github.com/laurenz-eschwey-bl/gnostic-grpc/utils"
+	"github.com/brainlab-vied/gnostic-grpc/incompatibility"
+	"github.com/brainlab-vied/gnostic-grpc/utils"
 )
 
 // main function for aggreation tool

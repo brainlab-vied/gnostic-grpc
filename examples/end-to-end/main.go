@@ -15,7 +15,7 @@
 package main
 
 import (
-	"github.com/laurenz-eschwey-bl/gnostic-grpc/examples/end-to-end/bookstore"
+	"github.com/brainlab-vied/gnostic-grpc/examples/end-to-end/bookstore"
 )
 
 func main() {
