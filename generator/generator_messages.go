@@ -266,7 +266,7 @@ func addFieldDescriptor(message *dpb.DescriptorProto, surfaceField *surface_v1.F
 				Name: []*dpb.UninterpretedOption_NamePart{
 					{NamePart: ptr("json_name")},
 				},
-				AggregateValue: ptr(`"` + surfaceField.Name + `"]; // @gotags: json:"` + surfaceField.Name + `" format:"` + format + `" `),
+				AggregateValue: ptr(`"` + surfaceField.Name + `"`),//]; // @gotags: json:"` + surfaceField.Name + `" format:"` + format + `" `),
 			},
 		},
 	}
